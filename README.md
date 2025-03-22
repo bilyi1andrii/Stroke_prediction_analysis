@@ -5,12 +5,12 @@ For our research project, we used an open-source dataset from the Kaggle platfor
 
 ## Goal
 The primary goal of our project is to investigate the main sources of strokes. Specifically, we aim to:
-• Check if the data follows one of the standard distributions (gamma, normal, uniform...).
-• Plot linear relationships between two or more characteristics.
-• Clean the dataset by handling missing values (N/A’s).
-• Calculate the average age of stroke occurrences.
-• Prove that strokes at an early age (below 18) are shifted left on the age distribution curve and are likely dependent on genetic defects.
-• Formulate hypotheses and perform logistic regression analysis.
+- Check if the data follows one of the standard distributions (gamma, normal, uniform...).
+- Plot linear relationships between two or more characteristics.
+- Clean the dataset by handling missing values (N/A’s).
+- Calculate the average age of stroke occurrences.
+- Prove that strokes at an early age (below 18) are shifted left on the age distribution curve and are likely dependent on genetic defects.
+- Formulate hypotheses and perform logistic regression analysis.
 
 ## Possible Hypothesis to be Tested
 1. The proportion of strokes in urban ares is equal to the proprotion of strokes in rural areas;

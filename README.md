@@ -1,7 +1,7 @@
 # Research Project: Stroke Prediction
 
 ## Overview
-For our research project, we used an open-source dataset from the Kaggle platform. The dataset is available at the following link: Stroke Prediction Dataset. The dataset is intended for educational purposes. The data table contains a small amount of null values and includes 11 columns of attributes.
+For our research project, we used an open-source dataset from the Kaggle platform. You can take a look at the data located in Dataset folder. The dataset is intended for educational purposes. The data table contains a small amount of null values and includes 11 columns of attributes.
 
 ## Goal
 The primary goal of our project is to investigate the main sources of strokes. Specifically, we aim to:
@@ -19,4 +19,4 @@ The primary goal of our project is to investigate the main sources of strokes. S
 4. The variance in avg_glucose_level differs significantly between patients who had a stroke and whose who did not
 
 ## Results
-The thorough analysis can be found in the .html file. The code part is located in .rmd file. You can also take a look at the data, which is in Dataset folder.
+The thorough analysis can be found in the .html file. The code part is located in .rmd file.

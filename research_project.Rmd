@@ -1,0 +1,706 @@
+---
+title: "Research Project: Stroke prediction"
+
+output:
+  html_document:
+    df_print: paged
+---
+
+
+### Work Breakdown
+Andrii Bilyi:
+
+- Men or Women - Who is more likely to have a stroke?
+- Testing multiple factors
+
+Maksym Dzoban:
+
+- Check if the data follows one of the standard distributions
+- Calculate the average age of stroke occurrences
+- Visualize the relationship between age and average glucose levels and how glucose levels vary with age, categorized by stroke status.
+- Logistic Regressions section
+- Hypothesis testing section
+
+
+Ira Kyrylova:
+
+- Analysis of the Variance of Average Glucose Levels
+- Analysis of the Mean of Average Glucose Levels
+
+
+
+### Comments from team members on their work
+
+**Andrii Bilyi:**
+
+In this project, I started by exploring the relationship between gender and stroke prevalence through visualizations and a two-proportion Z-test, which showed no significant difference in stroke proportions between males and females. I then tested the effect of age and glucose levels on stroke likelihood, using hypothesis tests and a logistic regression model. The findings revealed that age significantly increases stroke risk, while glucose levels have a smaller impact. Overally, it was fun experience
+
+
+**Maksym Dzoban:**
+
+In this project I started by cleaning the data, removing entries with missing values, and checked if key variables like BMI and glucose levels followed a normal distribution using the KS test. Then calculated the average age of stroke patients and visualized how stroke occurrence relates to age and glucose levels, using logistic regression to model these probabilities. To test whether stroke proportions differed between urban and rural areas and learned how to clean data, I used 2 sided Z test. This project gave me nice oportunity to work with real-life data and applying hypothesis test, which I learned during P&S course
+
+**Ira Kyrylova:**
+
+Through this analysis, I gained experience on testing hypotheses for a real dataset. I learned how to choose hypotheses to obtain valuable results and how to select the correct testing methods to ensure accurate conclusions. Additionally, I applied tests learned in my P&S course, gaining a better understanding of them, and discovered new tests such as Levene's Test and Welch's T-test. I tested the variances and means of people with and without a stroke. As a result, I found that the means are statistically different and concluded that having a higher average glucose level is associated with a higher likelihood of having a stroke.
+
+
+
+### Short Intro
+According to the World Health Organization (WHO) stroke is the 2nd leading cause of death globally, responsible for approximately 11% of total deaths. We decided to analyze this dataset to test hypotheses and explore the key factors influencing the likelihood of a stroke based on a person's habits, state, or health conditions.
+
+### Used Libraries
+```{r}
+library(readr)
+library(ggplot2)
+library(car)
+```
+
+### Preliminary exploration of a dataset
+
+**1.Does residence type  affect stroke proportions?**
+```{r}
+data <- read_csv("data.csv", show_col_types = FALSE)
+data <- data[, c("Residence_type", "stroke")]
+
+residence_proportions <- data.frame(
+  r_type = c("Urban", "Rural"),
+  total_count = numeric(2),
+  stroke_count = numeric(2),
+  proportion = numeric(2)
+)
+
+urban_data <- data[data$Residence_type == "Urban", ]
+residence_proportions$total_count[1] <- nrow(urban_data)
+residence_proportions$stroke_count[1] <- sum(urban_data$stroke == 1, na.rm = TRUE)
+residence_proportions$proportion[1] <- residence_proportions$stroke_count[1] / residence_proportions$total_count[1]
+
+rural_data <- data[data$Residence_type == "Rural", ]
+residence_proportions$total_count[2] <- nrow(rural_data)
+residence_proportions$stroke_count[2] <- sum(rural_data$stroke == 1, na.rm = TRUE)
+residence_proportions$proportion[2] <- residence_proportions$stroke_count[2] / residence_proportions$total_count[2]
+
+ggplot(residence_proportions, aes(x = r_type, y = "Stroke Proportion", fill = proportion)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  scale_fill_gradient(low = "#C1E3B3", high = "#556B2F", name = "Proportion") +
+  geom_text(aes(label = scales::percent(proportion, accuracy = 0.1)), color = "white", size = 6) +
+  labs(
+    title = "Proportion of Strokes by Residence Type",
+    x = "Residence Type",
+    y = "Proportion of Stroke"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid = element_blank())
+```
+
+The graph illustrates the proportion of strokes by residence type (Rural vs. Urban). Each bar displays the exact proportion as a percentage. A color gradient  is used to visually differentiate the proportions, with darker shades indicating higher proportions.
+There is a slight tendency for individuals living in urban areas to have a higher percentage of strokes compared to those in rural areas.
+To determine whether the observed difference in stroke ratios between two residence types is statistically significant, we perform a two-proportion Z-test.
+
+The null hypothesis $H_0$ assumes that the proportion of strokes is the same for urban and rural residents $p_{\text{urban}} = p_{\text{rural}}$. 
+
+The alternative hypothesis $H_1$ suggests that the proportions are different $p_{\text{urban}} \neq p_{\text{rural}}$.
+
+**2. Does average glucose level affect the likelihood of a stroke?**
+
+```{r}
+data <- read_csv("data.csv", show_col_types = FALSE)
+data <- data[, c("avg_glucose_level", "stroke")]
+
+data$glucose_category <- ifelse(data$avg_glucose_level <= 74, "low",
+                         ifelse(data$avg_glucose_level <= 106, "normal", "high"))
+
+categories <- unique(data$glucose_category)
+result <- data.frame(
+  glucose_category = categories,
+  total_count = numeric(length(categories)),
+  stroke_count = numeric(length(categories)),
+  proportion = numeric(length(categories))
+)
+
+for (i in seq_along(categories)) {
+  category <- categories[i]
+  subset_data <- data[data$glucose_category == category, ]
+  total_count <- nrow(subset_data)
+  stroke_count <- sum(subset_data$stroke == 1, na.rm = TRUE)
+  proportion <- ifelse(total_count > 0, stroke_count / total_count, NA)
+
+  result$total_count[i] <- total_count
+  result$stroke_count[i] <- stroke_count
+  result$proportion[i] <- proportion
+}
+
+ggplot(result, aes(x = "", y = glucose_category, fill = proportion)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  scale_fill_gradient(low = "light blue", high = "dark blue", name = "Proportion") +
+  geom_text(aes(label = scales::percent(proportion, accuracy = 0.1)), color = "white", size = 6) +
+  labs(
+    title = "Proportion of Strokes by Glucose Category",
+    x = "",
+    y = "Glucose Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+```
+
+The graph illustrates the proportion of strokes by glucose category (normal, low, and high). Each bar displays the exact proportion as a percentage, with a color gradient used to visually differentiate the proportions—darker shades indicate higher proportions. The data suggests that more individuals with higher glucose levels have strokes (7.4%), followed by those with low glucose levels (4.0%) and normal glucose levels (3.5%).
+
+```{r}
+data <- read_csv("data.csv", show_col_types = FALSE)
+data <- data[, c("avg_glucose_level", "stroke")]
+ggplot(data, aes(x = factor(stroke), y = avg_glucose_level, fill = factor(stroke))) +
+  geom_violin() +
+  scale_fill_manual(values = c("lightblue", "lightcoral"), labels = c("No Stroke", "Stroke")) +
+  labs(
+    title = "Distribution of Average Glucose Levels: Stroke vs No Stroke",
+    x = "Stroke Status",
+    y = "Average Glucose Level",
+    fill = "Stroke Status"
+  ) +
+  theme_minimal()
+```
+
+This violin plot visualizes the distribution of average glucose levels for two groups. The distribution for stroke patients (red) shows a higher concentration of people with elevated glucose levels compared to non-stroke ones (blue).
+
+So to decide whether individuals with a higher average glucose level are more likely to experience a stroke, we want to perform two-sample t-test to check if average glucose level differs significantly between stroke and non-stroke patients.
+
+$H_0$: The mean average glucose level for stroke patients is equal to that of non-stroke patients:
+$$\mu_{\text{stroke}} = \mu_{\text{non-stroke}}
+$$
+$H_1$: The mean average glucose level for stroke patients is greater than that of non-stroke patients:
+$$
+\mu_{\text{stroke}} > \mu_{\text{non-stroke}}
+$$
+
+And f-test to check if the variance in glucose levels significantly differs between them.
+
+$H_0$: The variances of the average glucose levels for stroke patients and non-stroke patients are equal:
+  
+$$
+\sigma^2_{\text{stroke}} = \sigma^2_{\text{non-stroke}}
+$$
+$H_1$: The variances of the average glucose levels for stroke patients and non-stroke patients are not equal:
+  
+$$
+\sigma^2_{\text{stroke}} \neq \sigma^2_{\text{non-stroke}}
+$$
+
+### Cleaning Dataset
+
+Our table contains some undefined values. To make our analysis more authentic, this section is made to get rid of such distractions. As a result we are now will be working with 3425 patients. (was 5110)
+```{r}
+df <- read.csv("data.csv", stringsAsFactors = FALSE)
+
+df <- df[df$gender != "Other", ]
+df <- df[df$bmi != "N/A", ]
+df <- df[df$smoking_status != "Unknown", ]
+```
+
+
+### Check if the data follows one of the standard distributions
+
+The Kolmogorov-Smirnov (KS) test is used to determine whether the data follows a normal distribution. In this analysis:
+
+-   The **mean** and **standard deviation (sd)** arguments specify the parameters of the normal distribution to compare against. These values are calculated from the jittered data.
+-   A small amount of random noise (jitter) is added to the data to avoid ties, which can affect the KS test results.
+-   If the **p-value** is small (e.g., less than 0.05), it indicates that the null hypothesis is rejected, suggesting that the data significantly deviates from a normal distribution.
+
+```{r}
+set.seed(13)
+avg_glucose_level_data <- df$avg_glucose_level + runif(length(df$avg_glucose_level), -1e-7, 1e-7)
+ks.test(avg_glucose_level_data, "pnorm", mean = mean(avg_glucose_level_data), sd = sd(avg_glucose_level_data))
+```
+
+#### Checks if the BMI data looks like a normal distribution (KS-test)
+
+This code checks if the BMI data looks like a normal distribution. We converted the data, calculated some averages, ran a KS test, and made a histogram with a density line to check it out. The null hypothesis for the KS test assumes that the BMI data follows a normal distribution. A p-value smaller than 0.05 indicates that there is strong evidence against this assumption. Since the p-value obtained from the KS test is less than the significance level of 0.05, we reject the null hypothesis. 
+
+
+```{r}
+#bmi column to numeric
+df$bmi <- as.numeric(df$bmi)
+bmi_data = df$bmi
+mu_bmi <- mean(bmi_data)
+sigma_bmi <- sd(bmi_data)
+
+set.seed(13)
+bmi_jittered <- bmi_data + runif(length(bmi_data), -1e-7, 1e-7)
+ks.test(bmi_jittered, "pnorm", mean = mean(bmi_jittered), sd = sd(bmi_jittered))
+
+hist(bmi_data, probability = TRUE, main = "Histogram of BMI", xlab = "BMI")
+lines(density(bmi_data), col="blue")
+
+```
+
+### Calculate the average age of stroke occurrences
+
+```{r}
+mean_age_stroke <- mean(df$age[df$stroke == 1], na.rm = TRUE)
+cat(mean_age_stroke)
+```
+
+### Visualize the relationship between age and average glucose levels and how glucose levels vary with age, categorized by stroke status.
+
+```{r}
+library(ggplot2)
+df$stroke <- as.factor(df$stroke)
+ggplot(df, aes(x = age, y = avg_glucose_level, color = stroke)) +
+  geom_line(alpha = 0.7) +
+  facet_wrap(~stroke, scales = "free_y") +
+  scale_color_manual(values = c("0" = "darkblue", "1" = "lightblue")) +
+  labs(
+    title = "Average Glucose Level by Age",
+    x = "Age",
+    y = "Average Glucose Level",
+    color = "Stroke"
+  ) +
+  theme_minimal()
+
+
+```
+
+### Logistic Regression: Estimating Stroke Probability Based on Age
+
+```{r}
+library(ggplot2)
+
+model_logistic <- glm(stroke ~ age, data = df, family = binomial(link = "logit"))
+age_seq <- seq(min(df$age), max(df$age), length.out = 100)
+new_data <- data.frame(age = age_seq)
+pred_prob <- predict(model_logistic, newdata = new_data, type = "response")
+
+ggplot(df, aes(x = age, y = stroke)) +
+  geom_jitter(width = 0.3, height = 0.03, alpha = 0.5, color = "blue") +
+  geom_line(aes(x = age_seq, y = pred_prob), data = new_data, color = "red", size = 1) +
+  labs(
+    title = "Probability of Stroke Based on Age",
+    x = "Age",
+    y = "Probability of Stroke"
+  ) +
+  theme_minimal()
+
+```
+
+### Logistic Regression: Estimating Stroke Probability Based on Glucose Level
+
+```{r}
+model_glucose <- glm(stroke ~ avg_glucose_level, data = df, family = binomial(link = "logit"))
+
+glucose_seq <- seq(min(df$avg_glucose_level), max(df$avg_glucose_level), length.out = 100)
+new_glucose <- data.frame(avg_glucose_level = glucose_seq)
+pred_glucose <- predict(model_glucose, newdata = new_glucose, type = "response")
+
+ggplot(df, aes(x = avg_glucose_level, y = stroke)) +
+  geom_jitter(width = 5, height = 0.03, alpha = 0.5, color = "blue") +
+  geom_line(aes(x = glucose_seq, y = pred_glucose), data = new_glucose, color = "red", size = 1) +
+  labs(
+    title = "Probability of Stroke Based on Glucose Level",
+    x = "Average Glucose Level",
+    y = "Probability of Stroke"
+  ) +
+  theme_minimal()
+```
+
+### Hypothesis testing. The proportion of strokes in urban areas is equal to the proportion of strokes in rural areas.
+
+-   $p_1 = \frac{x_1}{n_1}$: The sample proportion for group 1 (e.g., Urban strokes).
+-   $p_2 = \frac{x_2}{n_2}$: The sample proportion for group 2 (e.g., Rural strokes).
+-   $p_{\text{pooled}} = \frac{x_1 + x_2}{n_1 + n_2}$: The pooled proportion, assuming the null hypothesis ($H_0$) that there is no difference between the proportions.
+
+Where: - $x_1$ and $x_2$ are the counts of "successes" (e.g., strokes) in group 1 and group 2, respectively. - $n_1$ and $n_2$ are the total sample sizes for group 1 and group 2, respectively.
+
+The standard error ($SE$) of the difference in proportions under the null hypothesis is:
+
+$$
+SE = \sqrt{p_{\text{pooled}} \cdot (1 - p_{\text{pooled}}) \cdot \left( \frac{1}{n_1} + \frac{1}{n_2} \right)}
+$$
+
+The test statistic is:
+
+$$
+Z = \frac{p_1 - p_2}{SE}
+$$
+
+Using the standard normal distribution ($Z$-distribution), the p-value is calculated based on the observed $Z$-value:
+
+-   For a two-sided test: $p = 2 \cdot P(Z > |Z_{\text{obs}}|)$.
+
+The test statistic $Z$ can be expressed as:
+
+$$
+Z = \frac{\frac{x_1}{n_1} - \frac{x_2}{n_2}}{\sqrt{\frac{x_1 + x_2}{n_1 + n_2} \cdot \left( 1 - \frac{x_1 + x_2}{n_1 + n_2} \right) \cdot \left( \frac{1}{n_1} + \frac{1}{n_2} \right)}}
+$$
+
+Where: - $p_{\text{pooled}} = \frac{x_1 + x_2}{n_1 + n_2}$.
+
+```{r}
+df$stroke <- as.numeric(as.character(df$stroke))
+
+urban_stroke <- sum(df$stroke[df$Residence_type == "Urban"], na.rm = TRUE)
+rural_stroke <- sum(df$stroke[df$Residence_type == "Rural"], na.rm = TRUE)
+
+urban_total <- nrow(df[df$Residence_type == "Urban", ])
+rural_total <- nrow(df[df$Residence_type == "Rural", ])
+
+test_result <- prop.test(
+  x = c(urban_stroke, rural_stroke),
+  n = c(urban_total, rural_total),
+  alternative = "two.sided",
+  correct = FALSE
+)
+
+print(test_result)
+```
+
+
+### Men or Women - Who is more likely to have a stroke?
+
+Understanding the relationship between gender and stroke prevalence is quite crucial for discovering new preventive measures and interventions. That's why we decided to dedicate this section to uncover the possible answer to our question: "Men or Women - Who is more likely to have a stroke?".
+
+Before conducting hypothesis testing, we want to show you some visualization to provide an intuitive understanding of the data and possibly to identify some pattern between groups
+
+```{r}
+data <- read_csv("data.csv", show_col_types = FALSE)
+data <- data[, c("gender", "stroke")]
+
+gender_proportions <- data.frame(
+  gender = c("Female", "Male"),
+  total_count = numeric(2),
+  stroke_count = numeric(2),
+  proportion = numeric(2)
+)
+
+female_data <- data[data$gender == "Female", ]
+gender_proportions$total_count[1] <- nrow(female_data)
+gender_proportions$stroke_count[1] <- sum(female_data$stroke == 1, na.rm = TRUE)
+gender_proportions$proportion[1] <- gender_proportions$stroke_count[1] / gender_proportions$total_count[1]
+
+male_data <- data[data$gender == "Male", ]
+gender_proportions$total_count[2] <- nrow(male_data)
+gender_proportions$stroke_count[2] <- sum(male_data$stroke == 1, na.rm = TRUE)
+gender_proportions$proportion[2] <- gender_proportions$stroke_count[2] / gender_proportions$total_count[2]
+
+ggplot(gender_proportions, aes(x = gender, y = "Stroke Proportion", fill = proportion)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  scale_fill_gradient(low = "light pink", high = "dark red", name = "Proportion") +
+  geom_text(aes(label = scales::percent(proportion, accuracy = 0.1)), color = "white", size = 6) +
+  labs(
+    title = "Proportion of Strokes by Gender",
+    x = "Gender",
+    y = "Proportion of Stroke"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid = element_blank())
+```
+
+The graph represents the proportion of strokes among males and females. Each bar has the exact proportion displayed as a percantage. The gradient fill helps to distinguish the difference in proportions, the darker the color, the higher proportion.
+
+As we can see there is a slight tendency towards male to have a bigger percentage of strokes, rather than female. To determine whether the observed difference in stroke ratios between two genders is statistically significant, we perform a two-proportion Z-test. This test will conclude whether the variation is likely due to random sampling or represents a true difference in population.
+
+The null hypothesis ($H_0$) assumes that the fraction of stokes is the same for males and females ($p_{male} = p_{female}$). The alternative hypothesis ($H_a$) states that the portions are different ($p_{male} \neq p_{female}$) Using this test, we will see, whether the observed difference in stroke proportions is statistically significant.
+
+```{r}
+males <- subset(df, gender == "Male")
+females <- subset(df, gender == "Female")
+
+stroke_male <- sum(males$stroke)
+stroke_female <- sum(females$stroke)
+total_male <- nrow(males)
+total_female <- nrow(females)
+
+prop.test(c(stroke_male, stroke_female), c(total_male, total_female), alternative = "two.sided")
+```
+
+As we can see our p-value is quite high (0.517), which is far bigger than the typical significance levels $\alpha = 0.01, 0.05$. It suggests, that we cannot reject our null-hypothesis, meaning that two proportions are not so different between each other. There is also observed proportions for males (5.6%) and females (5.0%), that are quite close, with negligible difference of 0.6%. The 95% confidence interval for the difference in proportions (-0.0104, 0.0218) further supports this conclusion, as it includes 0, indicating the true difference might be zero.
+
+This test suggests that stroke likelihood is approximately equal for males and femlaes in this dataset, However, this analysis does not account for other factors such as age or health conditions.
+
+### Testing Multiple Factors
+
+So to look at this problem from different angle we constructed the following graph:
+
+```{r}
+df$stroke <- as.factor(df$stroke)
+
+# Create the scatterplot with smoothing lines and faceting by gender
+ggplot(data = df, aes(x = avg_glucose_level, y = age, color = stroke)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), se = FALSE) +
+  facet_grid(. ~ gender) +
+  labs(
+    title = "Relationship of Stroke with Age, Glucose Levels, and Gender",
+    x = "Average Glucose Level",
+    y = "Age",
+    color = "Stroke"
+  ) +
+  theme_minimal()
+```
+
+The graph illustrates similarities in stroke trends between males and females, with age playing a critical rol in increasing stroke risk. Additionally, it suggests a slight difference in glucose levels among stroke cases, where males tend to have higher level than females.
+
+Based on these observations, we can propose another hypotheses to test. For example: 
+
+**1)** Exam whether the ratio of strokes increases significantly in individuals aged over 60 to those under 60, regardless of gender.
+
+**2)** Inspect whether individuals with glucose level above a certain threshold have a significantly higher likelihood of stroke compared to those below.
+
+**3)** And at the end test whether older individuals with high glucose levels are at the highest risk of stroke compared to younger individuals with lower glucose levels, using logistic regression model.
+
+**Let's start from 1)**
+
+Null hypothesis ($H_0: p_{over60} = p_{under60}$), alternative one $(H_a:  p_{over60} > p_{under60})$
+
+One-sided proportion z-test
+
+```{r}
+over_60 <- subset(df, age > 60)
+under_60 <- subset(df, age <= 60)
+
+
+stroke_over_60 <- sum(over_60$stroke == 1, na.rm = TRUE)
+stroke_under_60 <- sum(under_60$stroke == 1, na.rm = TRUE)
+total_over_60 <- nrow(over_60)
+total_under_60 <- nrow(under_60)
+
+prop.test(
+  c(stroke_over_60, stroke_under_60), 
+  c(total_over_60, total_under_60), 
+  alternative = "greater"
+)
+```
+
+The data shows, that p-value is super tiny (less than 2.2e-16). It means that there is enough evidence to reject the null hypothesis, meaning that there is a bigger chunk of people aged over 60, that had stroke attack. The 95 percent confidence interval shows, that the difference between two ratios could be quite high, ranging from (0.08 to 1). 
+
+And as it is shown at the bottom of the table, prop1 (over 60) is much greater than prop2 (under 60) by a whopping one!
+
+**Move on to 2)**
+
+Null hypothesis ($H_0: p_{high \space glucose} = p_{low \space glucose}$), alternative one $(H_a:  p_{high \space glucose} \neq p_{low \space glucose})$ 
+
+Chi-squared test
+
+```{r}
+
+df$glucose_category <- ifelse(df$avg_glucose_level > 150, "High", "Low")
+
+
+stroke_table <- table(df$glucose_category, df$stroke)
+
+
+chi_sq_result <- chisq.test(stroke_table)
+
+
+print(chi_sq_result)
+```
+
+We used chi-squared test to assess whether the observed distribution of stroke cases across glucose categories differs from what would be expected under the $H_0$.
+The table suggests, that we should reject the null-hypothesis, i.e. glucose levels (above 150 mg/dL) are significant, compared to those below, in stroke likelihood affection. (p-value is little)
+
+**The last 3)**
+
+To test whether older individuals with high glucose levels are at the highest risk of stroke using a logistic regression model, we can fit a model where the dependent variable is stroke and the predictors are age and avg_glucose_level.
+
+```{r}
+
+df$stroke <- as.factor(df$stroke)
+
+
+model <- glm(stroke ~ age + avg_glucose_level + age:avg_glucose_level, 
+             data = df, 
+             family = "binomial")
+
+
+summary(model)
+```
+
+As we can see, the key finding here is age: a statistically significant predictor (p-value \< 0.001), with each additional year increasing the log-odds of stroke by 0.0836. This indicates a strong positive relationship between age and stroke risk. On the other hand, average glucose level is not so critical, suggesting that this predictor do not affect stroke risk as good as age.
+
+In summary, the interaction (Age x Glucose Level) is also not important, indicating no evidence that there is a connection between them, when talking about stroke risks. The model reduces deviance from 1410.9 to 1163.1, showing an improved fit, when with predictors!
+
+Here is the graph, of how our regression model works:
+
+```{r}
+grid <- expand.grid(
+  age = seq(min(df$age, na.rm = TRUE), max(df$age, na.rm = TRUE), length.out = 100),
+  avg_glucose_level = seq(min(df$avg_glucose_level, na.rm = TRUE), max(df$avg_glucose_level, na.rm = TRUE), length.out = 100)
+)
+
+grid$predicted_probability <- predict(model, newdata = grid, type = "response")
+
+ggplot(grid, aes(x = avg_glucose_level, y = age, fill = predicted_probability)) +
+  geom_tile() +
+  scale_fill_gradient(low = "blue", high = "red", name = "Stroke Probability") +
+  labs(
+    title = "Logistic Regression Model Predictions",
+    x = "Average Glucose Level",
+    y = "Age"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+
+```
+
+It considers both age and average glucose level, the color gradient represents the stroke probability, ranging from blue (low) to red (high).
+
+We can observe, that the stroke probability increases considerably with age, as shown by the transition from blue at younger ages to red at older ones. The horizontal gradient (change in color with increasing glucose levels) is minimal compared to vertical gradient, which suggests that this predictor has a negligible affect on stroke probability.
+
+And as we can conclude, there is no clear interaction between these two predictors, where age is more significant than glucose level.
+
+
+### Analysis of the Variance of Average Glucose Levels
+Out goal here is to check whether the variance in average glucose levels is equal for stroke and non-stroke patients.
+Here we want to use **two sample F-test** for variances, where the mean and variance of independent identically distributed random variables from $N(\mu, \sigma^2)$ are unknown.
+
+Two groups are independent because each group consists of distinct people who are not related or influenced by the data from the other group.
+
+For the F-test to be valid, we need to assume that the data for both groups are approximately normally distributed.
+
+**Null hypothesis $H_0$**: The variances of the average glucose levels for stroke patients and non-stroke patients are equal:
+  
+$$
+H_0 : \sigma^2_{\text{stroke}} = \sigma^2_{\text{non-stroke}}
+$$
+**Alternative hypothesis $H_1$**: The variances of the average glucose levels for stroke patients and non-stroke patients are not equal:
+  
+$$
+H_1 : \sigma^2_{\text{stroke}} \neq \sigma^2_{\text{non-stroke}}
+$$
+
+For the two-sided F-test, the statistic is calculated as:
+$$
+F = \frac{s_{\text{stroke}}^2}{s_{\text{non-stroke}}^2}
+$$
+where:
+$s_1^2 = \frac{S_{XX}}{n_1-1} \quad \text{is the estimate for } \sigma_{\text{stroke}}^2$,
+
+$s_2^2 = \frac{S_{YY}}{n_2-1} \quad \text{is the estimate for } \sigma_{\text{non-stroke}}^2$.
+
+1. If the value of F statistic is much greater than 1, it indicates that the variance of the first group \( s_{\text{stroke}}^2 \) is significantly larger than the variance of the second group \( s_{\text{non-stroke}}^2 \).
+
+2. If the value of F statistic is much smaller than 1, it indicates that the variance of the second group \( s_{\text{non-stroke}}^2 \) is larger than the variance of the first group \( s_{\text{stroke}}^2 \).
+
+3. If the value of F statistic is close to 1, it suggests that the variances of both groups are approximately equal.
+
+```{r}
+stroke_data <- df[df$stroke == 1, "avg_glucose_level"]
+non_stroke_data <- df[df$stroke == 0, "avg_glucose_level"]
+f_test_result <- var.test(stroke_data, non_stroke_data)
+
+print(f_test_result)
+```
+
+We got that F statistics is equal to 1.8734, which means that the variance in the stroke group is approximately 1.87 times larger than the variance in the non-stroke group.
+p-value is extremely small, so suggests that the null hypothesis (that the variances of the two groups are equal) should be rejected.
+The confidence interval is between 1.529101 and 2.343016. It does not include 1, so it supports the conclusion that the variances are different.
+
+
+**Levene's Test for Homogeneity of Variances**
+Since normality was only an assumption and may not hold, we can use Levene's Test as a more robust alternative to check for equality of variances. Since this test does not rely on the normality.
+Levene's Test, instead of testing the original values, uses the absolute deviations from the group means or medians.
+Hypotheses remain the same.
+
+The Levene test statistic is defined as:
+$$
+F = \frac{\frac{1}{k-1} \sum_{g=1}^{k} n_g (\bar{Z}_g - \bar{Z})^2}{\frac{1}{N-k} \sum_{g=1}^{k} \sum_{i=1}^{n_g} (Z_{ig} - \bar{Z}_g)^2}
+$$
+
+Where:
+k is the number of groups,
+$n_g$ is the number of observations in group g,
+$\bar{Z}_g$ is the mean (or median) of the transformed values for group g
+
+$$
+\bar{Z}_g = \frac{1}{n_g} \sum_{i=1}^{n_g} Z_{ig}
+$$
+$\bar{Z}$ is the overall mean (or median) of all the transformed values
+
+$$
+\bar{Z} = \frac{1}{N} \sum_{g=1}^{k} \sum_{i=1}^{n_g} Z_{ig}
+$$
+$Z_{ig}$ is the transformed value for the i-th observation in group g
+
+$$
+Z_{ig} = |Y_{ig} - \bar{Y}_g|
+$$
+N is the total number of observations across all groups.
+
+
+```{r}
+df$stroke <- as.factor(df$stroke)
+leveneTest(avg_glucose_level ~ stroke, data = df)
+```
+As a result we got that the F value is large. The meaning: variances differ significantly between groups.
+p-value is small, so it also suggests to reject null hypothesis.
+
+### Analysis of the Mean of Average Glucose Levels
+In this test we want to determine whether the mean of average glucose level of stroke patients is equal to that of non-stroke patients.
+
+
+**Null hypothesis $H_0$**: The mean average glucose level for stroke patients is equal to that of non-stroke patients:
+$$
+H_0 : \mu_{\text{stroke}} = \mu_{\text{non-stroke}}
+$$
+**Alternative hypothesis $H_1$**: The mean average glucose level for stroke patients is greater than that of non-stroke patients:
+$$
+H_1 : \mu_{\text{stroke}} > \mu_{\text{non-stroke}}
+$$
+
+Here we assume that it is appropriate to use two-sample T-test. The reason is that we need to test means of two samples $X_k \sim N(\mu_x, \sigma^2), \quad Y_k \sim N(\mu_y, \sigma^2)$, when equal variances are unknown.
+However, before applying the t-test, we must verify that certain conditions are satisfied:
+
+**1. The data for both groups (stroke and non-stroke patients) are approximately normally distributed.**
+We can rely on the **Central Limit Theorem** due to the large sample size in our dataset (3425 participants). The CLT states that, for large samples, the sampling distribution of the mean will approximate a normal distribution regardless of the population's actual distribution. Therefore, we can use the t-testt.
+
+**2. The two groups are independent.**
+Two groups are independent because each group consists of distinct individuals who are not related or influenced by the data from the other group.
+
+**3. The variances of the two groups are equal**
+From F-test we got that variances are not equal, so instead of just using two sample T-test, we should use the Welch's T-test, which can handle situations where the variances of the two groups are unequal.
+
+**Welch's T-test**
+**Test Statistic** $t = \frac{(x_1 - x_2)}{\sqrt{\frac{s_1^2}{n_1} + \frac{s_2^2}{n_2}}}$
+
+**Degrees of freedom** $df = \frac{\left( \frac{s_1^2}{n_1} + \frac{s_2^2}{n_2} \right)^2}{\left[ \frac{\left( \frac{s_1^2}{n_1} \right)^2}{n_1 - 1} \right] + \left[ \frac{\left( \frac{s_2^2}{n_2} \right)^2}{n_2 - 1} \right]}$
+
+The formula of degrees of freedom for Welch’s t-test takes into account the difference between the two standard deviations.
+
+```{r}
+stroke_data <- df[df$stroke == 1, "avg_glucose_level"]
+non_stroke_data <- df[df$stroke == 0, "avg_glucose_level"]
+
+t_test_result <- t.test(stroke_data, non_stroke_data, var.equal = FALSE)
+print(t_test_result)
+```
+T-statistic value is equal to 6.281 (A higher absolute t-value suggests a stronger difference between the group means)
+p-value is small, so the difference between the group means is statistically significant. We reject the null hypothesis in favor of the alternative.
+95 percent confidence interval suggests that the mean of stroke_data is 20.6 to 39.5 units higher than that of non_stroke_data.
+ 
+**Overall, these results indicate that individuals with a higher average glucose level are more likely to experience a stroke.**
+
+```{r}
+boxplot(stroke_data, non_stroke_data, 
+        names = c("Stroke", "Non-Stroke"),
+        main = "Comparison of Groups",
+        ylab = "Values",
+        col = c("light pink", "lightblue"))
+```
+
+### Conclusion
+
+Overall, team did a great job in testing different hypotheses. We managed to examine almost every task from our interim report and gained a valueable experience in data analysis. Thank you for your time! Have a nice day!
+
+

@@ -1,4 +1,4 @@
-# Research Project: Stroke Prediction
+# Research Project: Stroke Prediction 
 
 ## Overview
 For our research project, we used an open-source dataset from the Kaggle platform. You can take a look at the data located in Dataset folder. The dataset is intended for educational purposes. The data table contains a small amount of null values and includes 11 columns of attributes.
